@@ -15,22 +15,20 @@ public class Main {
 
     public Main() throws InterruptedException, LineUnavailableException {
             captureSound();
-            Thread.sleep(3000);
-            capture = false;
-            Thread.sleep(500);
-            playAudio();
     }
 
     public void playAudio() {
         try {
+            System.out.println("dentro de play audio");
             // Cogemos la informacion guardada anteriormente
-            byte[] audioData = byteArrayOutputStream.toByteArray();
-            InputStream byteArrayInputStream = new ByteArrayInputStream(audioData);
+//            byte[] audioData = byteArrayOutputStream.toByteArray();
+            byteArrayOutputStream.reset();
+//            InputStream byteArrayInputStream = new ByteArrayInputStream(audioData);
 
             //Creamos un formato
             AudioFormat audioFormat = getAudioFormat();
 
-            audioInputStream = new AudioInputStream(byteArrayInputStream, audioFormat, audioData.length / audioFormat.getFrameSize());
+//            audioInputStream = new AudioInputStream(byteArrayInputStream, audioFormat, audioData.length / audioFormat.getFrameSize());
 
             DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioFormat);
 
@@ -56,14 +54,19 @@ public class Main {
 
         // Info sobre la linea
         DataLine.Info info = new DataLine.Info(TargetDataLine.class, audioFormat);
+        DataLine.Info info2 = new DataLine.Info(SourceDataLine.class, audioFormat);
 
         //Creamos la linea por donde escuchar el audio, pasandole la info del audio q queremos escuchar
+        sourceDataLine = (SourceDataLine) AudioSystem.getLine(info2);
         targetDataLine = (TargetDataLine) AudioSystem.getLine(info);
 
         //Abrimos la linea y empezamos a caputar el sonido.
         targetDataLine.open(audioFormat);
         targetDataLine.start();
 
+        //Para reporducir sonido
+        sourceDataLine.open(audioFormat);
+        sourceDataLine.start();
         //Iniciamos hilo de lectura
         Thread hiloCaptura = new HiloDeCaptura();
         hiloCaptura.start();
@@ -76,7 +79,8 @@ public class Main {
     }
 
     class HiloDeCaptura extends Thread {
-        byte[] tempBuffer = new byte[10000];
+        byte[] tempBuffer = new byte[SIZE];
+
 
         @Override
         public void run() {
@@ -85,12 +89,12 @@ public class Main {
                 byteArrayOutputStream = new ByteArrayOutputStream();
                 //mientras capture sea true, escucharemos el microfono
                 capture = true;
-
                 while (capture) {
-                    int read = targetDataLine.read(tempBuffer, 0, tempBuffer.length); // la info se guarda en tempBuffer
+                    int read = targetDataLine.read(tempBuffer, 0, SIZE2); // la info se guarda en tempBuffer
                     if (read > 0) {
                         //Si hemos almacenado informacion, la guardamos en un OutputStream
                         byteArrayOutputStream.write(tempBuffer, 0, read);
+                        sourceDataLine.write(tempBuffer, 0, read);
                     }
                 }
                 //Cerramos el stream
@@ -100,19 +104,21 @@ public class Main {
             }
         }
     }
-
+    static int SIZE= 1000;
+    static int SIZE2= 500;
     class HiloDeReproduccion extends Thread {
-        byte tempBuffer[] = new byte[10000];
+        byte tempBuffer[] = new byte[SIZE];
 
         @Override
         public void run() {
             try {
                 int read;
                 //Leer hasta q devuelva -1, es decir, hasta q este vacio
-                while ((read = audioInputStream.read(tempBuffer, 0, tempBuffer.length)) != -1) {
+                while ((read = audioInputStream.read(tempBuffer, 0, SIZE2)) != -1) {
                     if (read > 0) {
                         //Escribimos la informacion en el buffer de la linea
                         sourceDataLine.write(tempBuffer, 0, read);
+
                     }
                 }
                 sourceDataLine.drain();
