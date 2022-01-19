@@ -9,12 +9,32 @@ public class Main {
     private ByteArrayOutputStream byteArrayOutputStream;
     private boolean capture;
 
-    public static void main(String[] args) throws LineUnavailableException, InterruptedException {
-        new Main();
-    }
+    public static void main(String[] args) throws IOException, InterruptedException {
 
-    public Main() throws InterruptedException, LineUnavailableException {
-            captureSound();
+        new Thread(() -> {
+            try {
+                Reproduccion reproduccion = new Reproduccion();
+                reproduccion.getAudio();
+            } catch (LineUnavailableException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        Thread.sleep(300);
+
+        new Thread(() -> {
+            try {
+                Grabadora grabadora= new Grabadora();
+                grabadora.captureSound();
+            } catch (LineUnavailableException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
+
     }
 
     public void playAudio() {
@@ -93,7 +113,7 @@ public class Main {
                     int read = targetDataLine.read(tempBuffer, 0, SIZE2); // la info se guarda en tempBuffer
                     if (read > 0) {
                         //Si hemos almacenado informacion, la guardamos en un OutputStream
-                        byteArrayOutputStream.write(tempBuffer, 0, read);
+//                        byteArrayOutputStream.write(tempBuffer, 0, read);
                         sourceDataLine.write(tempBuffer, 0, read);
                     }
                 }
